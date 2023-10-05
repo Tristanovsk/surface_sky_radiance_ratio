@@ -27,6 +27,6 @@ setup(
 
     # entry_points={
     #     'console_scripts': [
-    #         's2driver = TODO'
+    #         'ssrr = TODO'
     #     ]}
 )

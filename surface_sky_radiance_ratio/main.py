@@ -12,9 +12,15 @@ opj = os.path.join
 
 
 class lut():
-    def __init__(self):
-        self.rss_file = opj(os.path.dirname(__file__),'..','data','surf_sky_radiance_ratio_osoaa_opac_v1.nc')
+    def __init__(self,lutfile=None):
+        '''
 
+        :param lutfile: set to 'full' if you want the complete (all angles) look-up table
+        '''
+        if lutfile == ('full'):
+            self.rss_file = opj(os.path.dirname(__file__),'..','data','surf_sky_radiance_ratio_osoaa_opac_v1.nc')
+        else:
+            self.rss_file = opj(os.path.dirname(__file__), '..', 'data', 'surf_sky_radiance_ratio_osoaa_opac_sliced_v1.nc')
     def load(self):
         self.Rss_lut = xr.open_dataset(self.rss_file)
 
