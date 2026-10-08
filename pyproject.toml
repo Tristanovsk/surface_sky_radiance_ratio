@@ -1,0 +1,28 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "surface_sky_radiance_ratio"
+version = "1.0.0"
+description = "Minimal code to load and play with tabulated values for surface radiance correction in Above-Water Radiometry procedures"
+readme = "README.md"
+license = { file = "LICENSE" }
+authors = [{ name = "T. Harmel", email = "tristan.harmel@gmail.com" }]
+requires-python = ">=3.9"
+dependencies = [
+    "numpy",
+    "pandas",
+    "xarray",
+    "netCDF4",
+    "matplotlib",
+]
+
+[project.optional-dependencies]
+notebook = ["jupyter"]
+
+[tool.setuptools.packages.find]
+include = ["surface_sky_radiance_ratio*"]
+
+[tool.setuptools.package-data]
+"*" = ["*.nc", "*.txt", "*.csv", "*.dat"]
