@@ -37,7 +37,10 @@ $$
 where $E_d$ is the downwelling irradiance just above the surface.
 
 <p align="center">
-    <img src="illustration/viewing_geometry.jpg" width="450">
+    <picture>
+        <source media="(prefers-color-scheme: dark)" srcset="illustration/viewing_geometry_dark.png">
+        <img class="dark-light" src="illustration/viewing_geometry_light.png" width="450">
+    </picture>
 </p>
 <p align="center"><em>Viewing geometry convention: $\theta_v$ and $\phi_v$ are the zenith and azimuth angles of the viewing direction, $\theta'$ and $\phi'$ those of a given illumination direction, $\theta_N$ the zenith angle of the normal to a wave facet and $\alpha$ the phase angle. The relative azimuth $\Delta\phi$ is 0° when the Sun and sensor are in opposition (Fig. 1 of Harmel, 2023, CC BY 4.0).</em></p>
 
@@ -50,7 +53,7 @@ $R_{ss}$ was computed with the vector radiative transfer code OSOAA, including p
 | `wind` | Equivalent Cox-Munk wind speed | 0.5, 2, 4, 8, 12, 16 | m s<sup>-1</sup> |
 | `model` | OPAC aerosol model (70% relative humidity) | `COAV_rh70` (continental average), `DESE_rh70` (desert), `MACL_rh70` (maritime clean), `URBA_rh70` (urban) | - |
 | `aot_ref` | Aerosol optical thickness at 550 nm | 0 to 1.5 | - |
-| `wl` | Wavelength $\lambda$ | 350, 400, 500, 600, 700, 800, 1000 | nm |
+| `wl` | Wavelength $\lambda$ | 350, 400, 500, 600, 700, 800, 1000; since v1.1 also 1600, 2200, 2500 (atmospheric windows only, see the docs) | nm |
 | `sza` | Solar zenith angle $\theta_s$ | 0 to 88, step 2 | degrees |
 | `vza` | Viewing zenith angle $\theta_v$ | full table: 0 to 90; sliced table: 30, 40, 50 | degrees |
 | `azi` | Relative azimuth $\Delta\phi$ | full table: 0 to 360, step 5; sliced table: 45 to 160, step 5 | degrees |
@@ -60,17 +63,17 @@ $R_{ss}$ was computed with the vector radiative transfer code OSOAA, including p
 </p>
 
 ## Installation
-First you have to clone the package.
-Then, you can install the package with
+
+Python >= 3.10 is required.
 
 ```
-pip install -e .
+pip install git+https://github.com/Tristanovsk/surface_sky_radiance_ratio.git
 ```
 
-(the editable install is required so that the look-up tables in the `data` folder are found)
+or, to run the notebooks, clone the repository and install it with `pip install ".[notebook]"` (`pip install -e ".[all]"` for development).
 
-A reduced size look-up table is provided with the package for view zenith angles 30, 40 and 50°.
-If you want full simulations, you can download the netcdf accessible [here](https://drive.google.com/file/d/1rJ9RkGhNj3jEk3qmS6oGV8VdZaRzL5bO/view?usp=sharing) (warning file size = 1.2 GB) and place it in the `data` folder, then load it with `lut('full')`.
+A reduced size look-up table (view zenith angles 30, 40 and 50°) is installed with the package.
+For the full simulations, download the complete netCDF file (v1.1, 350-2500 nm, about 1.2 GB; or v1.0, 350-1000 nm, accessible [here](https://drive.google.com/file/d/1rJ9RkGhNj3jEk3qmS6oGV8VdZaRzL5bO/view?usp=sharing)), place it in the `data` folder of the repository or in a folder given by the environment variable `SURFACE_SKY_RADIANCE_RATIO_DATA`, then load it with `lut('full')`.
 
 ## Usage
 
@@ -91,7 +94,10 @@ rss.plot_vs_sza(ax=ax, vza=40, azi=135, wl=500, model='MACL_rh70')
 Once the installation is successful, you can check the notebooks for practical examples:
 
 <p align="center">
-    <img src="illustration/Rss_Rayleigh_500nm_vza40.png" >
+    <picture>
+        <source media="(prefers-color-scheme: dark)" srcset="illustration/Rss_Rayleigh_500nm_vza40_dark.png">
+        <img class="dark-light" src="illustration/Rss_Rayleigh_500nm_vza40_light.png">
+    </picture>
 </p>
 
 ## Documentation

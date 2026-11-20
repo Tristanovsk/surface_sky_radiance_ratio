@@ -160,4 +160,10 @@ cython_debug/
 #.idea/
 docs/build/
 docs/source/tutorials/*.ipynb
-docs/source/surface_sky_radiance_ratio API/
+docs/source/generated/
+
+# PyCharm
+.idea/
+
+# complete look-up table (1.2 GB, downloaded separately)
+data/*.nc

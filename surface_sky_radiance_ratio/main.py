@@ -58,16 +58,116 @@ Mobley, C. D. (1999). Estimation of the remote-sensing reflectance from
 above-surface measurements. *Applied Optics*, 38(36), 7442-7455.
 """
 import os
+import warnings
+from pathlib import Path
 
 import numpy as np
 import xarray as xr
 
-import matplotlib as mpl
-import matplotlib.pyplot as plt
+__all__ = ['lut', 'lut_file', 'SLICED_LUT', 'FULL_LUT', 'FULL_LUT_V1', 'FULL_LUT_URL']
+
+#: Folder of the look-up table shipped with the package.
+PACKAGE_DATA_DIR = Path(__file__).resolve().parent / 'data'
+#: ``data`` folder of a clone of the repository (former location of the tables).
+REPO_DATA_DIR = Path(__file__).resolve().parents[1] / 'data'
+
+#: Sliced look-up table shipped with the package (vza = 30, 40, 50 degrees, 350-2500 nm).
+SLICED_LUT = 'surf_sky_radiance_ratio_osoaa_opac_sliced_v1.1.nc'
+#: Complete look-up table (350-2500 nm), downloaded separately.
+FULL_LUT = 'surf_sky_radiance_ratio_osoaa_opac_v1.1.nc'
+#: Download URL of the complete look-up table (Zenodo record, None until it is published).
+FULL_LUT_URL = None
+#: SHA-256 checksum of the complete look-up table, checked after download.
+FULL_LUT_SHA256 = 'f6fe457ef1430c7dcf8337201ad9ca9b9577b94bc51eaa537f7d9fa8266c1317'
+#: Complete look-up table of version 1.0 (350-1000 nm, Harmel 2023), used if v1.1 is not found.
+FULL_LUT_V1 = 'surf_sky_radiance_ratio_osoaa_opac_v1.nc'
+#: Location of the complete look-up table of version 1.0.
+FULL_LUT_GDRIVE = 'https://drive.google.com/file/d/1rJ9RkGhNj3jEk3qmS6oGV8VdZaRzL5bO/view?usp=sharing'
+
+#: Environment variable giving a folder that holds the complete look-up table.
+DATA_DIR_ENV = 'SURFACE_SKY_RADIANCE_RATIO_DATA'
 
 
+def _cache_dir():
+    try:
+        import pooch
+    except ImportError:
+        return None
+    return Path(pooch.os_cache('surface_sky_radiance_ratio'))
 
-opj = os.path.join
+
+def lut_file(lutfile=None, download=True):
+    """
+    Path of a look-up table file.
+
+    Parameters
+    ----------
+    lutfile : str or path-like, optional
+        ``None`` or ``'sliced'`` for the sliced table shipped with the package,
+        ``'full'`` for the complete table, or the path of a netCDF file.
+    download : bool, default True
+        For ``'full'``: download the table into the local cache when it is not
+        found locally (needs ``pooch``, ``pip install "surface_sky_radiance_ratio[download]"``).
+
+    Returns
+    -------
+    pathlib.Path
+        Path of the netCDF file.
+
+    Raises
+    ------
+    FileNotFoundError
+        If the file is not found (and cannot be downloaded).
+
+    Notes
+    -----
+    The complete table is searched, in order, in the folder given by the
+    environment variable ``SURFACE_SKY_RADIANCE_RATIO_DATA``, in the ``data``
+    folder of the repository clone and in the cache of the package
+    (:func:`pooch.os_cache`).
+    """
+    if lutfile is None or lutfile == 'sliced':
+        return PACKAGE_DATA_DIR / SLICED_LUT
+    if lutfile != 'full':
+        path = Path(lutfile).expanduser()
+        if not path.is_file():
+            raise FileNotFoundError(f'look-up table not found: {path}')
+        return path
+
+    candidates = []
+    if os.environ.get(DATA_DIR_ENV):
+        candidates.append(Path(os.environ[DATA_DIR_ENV]).expanduser())
+    candidates.append(REPO_DATA_DIR)
+    cache = _cache_dir()
+    if cache is not None:
+        candidates.append(cache)
+    for folder in candidates:
+        if (folder / FULL_LUT).is_file():
+            return folder / FULL_LUT
+    for folder in candidates:
+        if (folder / FULL_LUT_V1).is_file():
+            warnings.warn(f'{FULL_LUT} not found, using {FULL_LUT_V1} (version 1.0, 350-1000 nm)',
+                          stacklevel=2)
+            return folder / FULL_LUT_V1
+
+    if download and FULL_LUT_URL is not None:
+        try:
+            import pooch
+        except ImportError as err:
+            raise ImportError('pooch is needed to download the complete look-up table: '
+                              'pip install "surface_sky_radiance_ratio[download]"') from err
+        known_hash = f'sha256:{FULL_LUT_SHA256}' if FULL_LUT_SHA256 else None
+        return Path(pooch.retrieve(FULL_LUT_URL, known_hash=known_hash, fname=FULL_LUT,
+                                   path=cache, progressbar=True))
+
+    searched = ', '.join(str(f) for f in candidates)
+    if FULL_LUT_URL is not None:
+        hint = f'Download it from {FULL_LUT_URL}'
+    else:
+        hint = f'Download it (or {FULL_LUT_V1}, version 1.0, from {FULL_LUT_GDRIVE})'
+    raise FileNotFoundError(
+        f'{FULL_LUT} not found (searched: {searched}). {hint} '
+        f'and place it in one of these folders, or set {DATA_DIR_ENV} to its folder.')
 
 
 class lut():
@@ -97,7 +197,8 @@ class lut():
          - Aerosol optical thickness at 550 nm (0 to 1.5)
          - --
        * - ``wl``
-         - Wavelength :math:`\lambda` (350 to 1000)
+         - Wavelength :math:`\lambda` (350 to 1000, and 1600, 2200, 2500
+           since version 1.1)
          - nm
        * - ``sza``
          - Solar zenith angle :math:`\theta_s` (0 to 88, step 2)
@@ -116,17 +217,18 @@ class lut():
 
     Parameters
     ----------
-    lutfile : str, optional
-        Set to ``'full'`` to use the complete look-up table
-        (``surf_sky_radiance_ratio_osoaa_opac_v1.nc``, about 1.2 GB, to be
-        downloaded separately). By default, the sliced table shipped with the
-        package is used (``surf_sky_radiance_ratio_osoaa_opac_sliced_v1.nc``),
-        restricted to :math:`\theta_v` = 30, 40 and 50 degrees and
-        :math:`\Delta\phi` from 45 to 160 degrees.
+    lutfile : str or path-like, optional
+        By default, the sliced table shipped with the package is used
+        (``surf_sky_radiance_ratio_osoaa_opac_sliced_v1.1.nc``), restricted to
+        :math:`\theta_v` = 30, 40 and 50 degrees and :math:`\Delta\phi` from
+        45 to 160 degrees. Set to ``'full'`` to use the complete look-up table
+        (``surf_sky_radiance_ratio_osoaa_opac_v1.1.nc``, to be
+        downloaded separately, see :func:`lut_file`), or give the path of a
+        netCDF file.
 
     Attributes
     ----------
-    rss_file : str
+    rss_file : pathlib.Path
         Path of the netCDF look-up table file.
     Rss_lut : xarray.Dataset
         The look-up table. Only set after :meth:`load` is called.
@@ -142,26 +244,55 @@ class lut():
     >>> fig, ax = plt.subplots(1, 1)
     >>> rss.plot_vs_sza(ax=ax, vza=40, azi=135)
     """
-    def __init__(self,lutfile=None):
-        if lutfile == ('full'):
-            self.rss_file = opj(os.path.dirname(__file__),'..','data','surf_sky_radiance_ratio_osoaa_opac_v1.nc')
-        else:
-            self.rss_file = opj(os.path.dirname(__file__), '..', 'data', 'surf_sky_radiance_ratio_osoaa_opac_sliced_v1.nc')
-    def load(self):
+
+    def __init__(self, lutfile=None):
+        self.rss_file = lut_file(lutfile)
+
+    def load(self, **kwargs):
         """
         Open the netCDF look-up table and store it in ``Rss_lut``.
 
         The file is opened lazily with :func:`xarray.open_dataset`.
-        """
-        self.Rss_lut = xr.open_dataset(self.rss_file)
 
-    def plot_vs_sza(self,ax=None,
+        Parameters
+        ----------
+        **kwargs
+            Passed to :func:`xarray.open_dataset` (e.g. ``chunks={}`` to use dask).
+
+        Returns
+        -------
+        xarray.Dataset
+            The look-up table (also stored in ``Rss_lut``).
+        """
+        self.Rss_lut = xr.open_dataset(self.rss_file, **kwargs)
+        return self.Rss_lut
+
+    def _plot_winds(self, Rss, ax, winds, aot_ref, xname, label):
+        import matplotlib as mpl
+        import matplotlib.pyplot as plt
+
+        if ax is None:
+            _, ax = plt.subplots(1, 1)
+        cmap = plt.cm.Spectral_r
+        norm = mpl.colors.Normalize(vmin=np.min(winds), vmax=np.max(winds))
+        for wind in winds:
+            Rss.interp(wind=wind, aot_ref=aot_ref).plot(color=cmap(norm(wind)), ax=ax, label=f'{wind:g}')
+        ax.text(0.05, 0.95, label, size=16, transform=ax.transAxes, ha='left', va='top')
+        ax.minorticks_on()
+        ax.set_title('')
+        ax.set_xlim(0, 85)
+        ax.legend(title=r'$Wind\ (m\cdot s^{-1})$', fontsize=12)
+        ax.set_ylabel(r'$R_{ss}\ (-)$')
+        ax.set_xlabel(xname)
+        return ax
+
+    def plot_vs_sza(self, ax=None,
                     vza=40,
                     azi=90,
                     wl=500,
                     model='MACL_rh70',
                     aot_ref=0,
-                    winds=[0.5,2.,4.,8,12]):
+                    winds=(0.5, 2., 4., 8, 12)):
         r"""
         Plot :math:`R_{ss}` as a function of the solar zenith angle :math:`\theta_s`.
 
@@ -170,9 +301,8 @@ class lut():
 
         Parameters
         ----------
-        ax : matplotlib.axes.Axes
-            Axes to draw on, e.g., from ``fig, ax = plt.subplots(1, 1)``.
-            If ``None``, a message is printed and nothing is plotted.
+        ax : matplotlib.axes.Axes, optional
+            Axes to draw on. If ``None``, a new figure is created.
         vza : float, default 40
             Viewing zenith angle :math:`\theta_v` in degrees. The nearest
             tabulated value is used.
@@ -186,46 +316,27 @@ class lut():
             ``'MACL_rh70'`` or ``'URBA_rh70'``.
         aot_ref : float, default 0
             Aerosol optical thickness at 550 nm, linearly interpolated.
-        winds : list of float, default [0.5, 2., 4., 8, 12]
+        winds : sequence of float, default (0.5, 2., 4., 8, 12)
             Equivalent Cox-Munk wind speeds in m s-1, linearly interpolated.
             Each wind speed is drawn as one curve.
 
         Returns
         -------
-        matplotlib.axes.Axes or None
-            The axes with the plot, or ``None`` if ``ax`` was not given.
+        matplotlib.axes.Axes
+            The axes with the plot.
         """
+        Rss = self.Rss_lut.Rss.sel(model=model).sel(vza=vza, azi=azi, method='nearest').interp(wl=wl)
+        label = r'$\theta _v={:g}^\circ ,\ \Delta\phi={:g}^\circ$'.format(
+            float(Rss.vza), float(Rss.azi))
+        return self._plot_winds(Rss, ax, winds, aot_ref, r'$Sun\ zenith\ angle\ (deg.)$', label)
 
-        if ax is None:
-            print('please provide a matplotlib axis object, e.g., fig,ax = plt.subplots(1,1) then provide ax ')
-            return
-        cmap = plt.cm.Spectral_r
-        norm = mpl.colors.Normalize(vmin=np.min(winds), vmax=np.max(winds))
-
-
-        Rss = self.Rss_lut.Rss.sel(model=model).sel(vza=vza,azi=azi,method='nearest').interp(wl=wl)
-        for i_, wind in enumerate(winds):
-            color = cmap(norm(wind))
-            Rss_ = Rss.interp(wind=wind).interp(aot_ref=aot_ref)
-            Rss_.plot(color=color, ax=ax, label=str(wind))
-        ax.text(0.05, 0.95, r'$\theta _v={:d}^\circ ,\ \Delta\phi={:d}^\circ$'.format(vza, azi),
-                    size=16, transform=ax.transAxes, ha="left", va="top", )
-
-        ax.minorticks_on()
-        ax.set_title('')
-        ax.set_xlim(0, 85)
-        ax.legend(title=r'$Wind\ (m\cdot s^{-1})$', fontsize=12)
-        ax.set_ylabel(r'$R_{ss}\ (-)$')
-        ax.set_xlabel(r'$Sun\ zenith\ angle\ (deg.)$')
-        return ax
-
-    def plot_vs_vza(self,ax=None,
+    def plot_vs_vza(self, ax=None,
                     sza=40,
                     azi=90,
                     wl=500,
                     model='MACL_rh70',
                     aot_ref=0,
-                    winds=[0.5,2.,4.,8,12]):
+                    winds=(0.5, 2., 4., 8, 12)):
         r"""
         Plot :math:`R_{ss}` as a function of the viewing zenith angle :math:`\theta_v`.
 
@@ -235,9 +346,8 @@ class lut():
 
         Parameters
         ----------
-        ax : matplotlib.axes.Axes
-            Axes to draw on, e.g., from ``fig, ax = plt.subplots(1, 1)``.
-            If ``None``, a message is printed and nothing is plotted.
+        ax : matplotlib.axes.Axes, optional
+            Axes to draw on. If ``None``, a new figure is created.
         sza : float, default 40
             Solar zenith angle :math:`\theta_s` in degrees. The nearest
             tabulated value is used.
@@ -251,35 +361,17 @@ class lut():
             ``'MACL_rh70'`` or ``'URBA_rh70'``.
         aot_ref : float, default 0
             Aerosol optical thickness at 550 nm, linearly interpolated.
-        winds : list of float, default [0.5, 2., 4., 8, 12]
+        winds : sequence of float, default (0.5, 2., 4., 8, 12)
             Equivalent Cox-Munk wind speeds in m s-1, linearly interpolated.
             Each wind speed is drawn as one curve.
 
         Returns
         -------
-        matplotlib.axes.Axes or None
-            The axes with the plot, or ``None`` if ``ax`` was not given.
+        matplotlib.axes.Axes
+            The axes with the plot.
         """
-
-        if ax is None:
-            print('please provide a matplotlib axis object, e.g., fig,ax = plt.subplots(1,1) then provide ax ')
-            return
-        cmap = plt.cm.Spectral_r
-        norm = mpl.colors.Normalize(vmin=np.min(winds), vmax=np.max(winds))
-
-
-        Rss = self.Rss_lut.Rss.sel(model=model).sel(vza=slice(0,85)).sel(sza=sza,azi=azi,method='nearest').interp(wl=wl)
-        for i_, wind in enumerate(winds):
-            color = cmap(norm(wind))
-            Rss_ = Rss.interp(wind=wind).interp(aot_ref=aot_ref)
-            Rss_.plot(color=color, ax=ax, label=str(wind))
-        ax.text(0.05, 0.95, r'$\theta _s={:d}^\circ ,\ \Delta\phi={:d}^\circ$'.format(sza, azi),
-                    size=16, transform=ax.transAxes, ha="left", va="top", )
-
-        ax.minorticks_on()
-        ax.set_title('')
-        ax.set_xlim(0, 85)
-        ax.legend(title=r'$Wind\ (m\cdot s^{-1})$', fontsize=12)
-        ax.set_ylabel(r'$R_{ss}\ (-)$')
-        ax.set_xlabel(r'$Viewing\ zenith\ angle\ (deg.)$')
-        return ax
+        Rss = self.Rss_lut.Rss.sel(model=model).sel(vza=slice(0, 85)).sel(
+            sza=sza, azi=azi, method='nearest').interp(wl=wl)
+        label = r'$\theta _s={:g}^\circ ,\ \Delta\phi={:g}^\circ$'.format(
+            float(Rss.sza), float(Rss.azi))
+        return self._plot_winds(Rss, ax, winds, aot_ref, r'$Viewing\ zenith\ angle\ (deg.)$', label)

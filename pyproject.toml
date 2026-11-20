@@ -1,28 +1,75 @@
 [build-system]
-requires = ["setuptools>=61.0"]
+requires = ["setuptools>=77"]
 build-backend = "setuptools.build_meta"
 
 [project]
 name = "surface_sky_radiance_ratio"
-version = "1.0.0"
-description = "Minimal code to load and play with tabulated values for surface radiance correction in Above-Water Radiometry procedures"
+dynamic = ["version"]
+description = "Look-up tables of the surface-to-sky radiance ratio (Rss) for the correction of the reflected skylight in above-water radiometry"
 readme = "README.md"
-license = { file = "LICENSE" }
+license = "Apache-2.0"
+license-files = ["LICENSE"]
 authors = [{ name = "T. Harmel", email = "tristan.harmel@gmail.com" }]
-requires-python = ">=3.9"
+keywords = ["above-water radiometry", "ocean color", "remote sensing reflectance", "sky glint",
+            "surface reflectance factor", "polarization", "aerosol", "OSOAA", "look-up table"]
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Operating System :: OS Independent",
+    "Intended Audience :: Science/Research",
+    "Topic :: Scientific/Engineering :: Atmospheric Science",
+    "Topic :: Scientific/Engineering :: Physics",
+]
+requires-python = ">=3.10"
+# Lower bounds: oldest versions providing the APIs used by the package.
 dependencies = [
-    "numpy",
-    "pandas",
-    "xarray",
-    "netCDF4",
-    "matplotlib",
+    "numpy>=1.22",
+    "xarray>=2022.6",
+    "scipy>=1.8",          # xarray .interp
+    "netCDF4>=1.6",        # reading of the look-up tables
+    "matplotlib>=3.5",     # lut.plot_vs_sza, lut.plot_vs_vza
 ]
 
 [project.optional-dependencies]
-notebook = ["jupyter"]
+# download of the complete look-up table (1.2 GB) into the local cache
+download = ["pooch>=1.6"]
+# Jupyter environment to run the notebooks of the repository
+notebook = ["jupyterlab>=4", "ipykernel>=6", "pandas>=1.4", "suncalc"]
+# build the documentation (see docs/ and .readthedocs.yaml)
+docs = [
+    "sphinx>=7",
+    "sphinx-book-theme>=1.1",
+    "sphinx-copybutton",
+    "myst-nb>=1.0",
+    "myst-parser>=2.0",
+    "linkify-it-py",
+    "ipython",
+]
+# run the tests (tests/, sliced look-up table only)
+test = ["pytest>=7"]
+all = ["surface_sky_radiance_ratio[download,notebook,docs,test]"]
+
+[project.urls]
+Repository = "https://github.com/Tristanovsk/surface_sky_radiance_ratio"
+Documentation = "https://surface-sky-radiance-ratio.readthedocs.io"
+Issues = "https://github.com/Tristanovsk/surface_sky_radiance_ratio/issues"
+Changelog = "https://github.com/Tristanovsk/surface_sky_radiance_ratio/blob/main/CHANGELOG.md"
+Article = "https://doi.org/10.3389/frsen.2023.1307976"
+
+[tool.setuptools.dynamic]
+version = { attr = "surface_sky_radiance_ratio.__version__" }
 
 [tool.setuptools.packages.find]
 include = ["surface_sky_radiance_ratio*"]
 
 [tool.setuptools.package-data]
-"*" = ["*.nc", "*.txt", "*.csv", "*.dat"]
+"surface_sky_radiance_ratio.data" = ["*.nc"]
+
+[tool.setuptools.exclude-package-data]
+"*" = ["__pycache__/*", "*.pyc"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

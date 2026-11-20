@@ -1,0 +1,103 @@
+# Build surface_sky_radiance_ratio and publish it on PyPI with Trusted Publishing (no API token stored).
+#   - push a tag vX.Y.Z (equal to surface_sky_radiance_ratio.__version__)  -> PyPI, then GitHub release
+#   - run the workflow manually (Actions tab)                              -> TestPyPI
+# The GitHub release is created once the package is on PyPI, with the wheel and sdist attached and
+# the notes of the section [X.Y.Z] of CHANGELOG.md. When the GitHub-Zenodo integration is switched on
+# for the repository, each GitHub release is archived on Zenodo with a DOI (metadata: .zenodo.json).
+# Release steps: set __version__ = 'X.Y.Z' and move the Unreleased entries of CHANGELOG.md under
+# "## [X.Y.Z] - date"; tag main with vX.Y.Z and push the tag (git push origin vX.Y.Z).
+# One-time setup: on pypi.org and test.pypi.org, add a trusted publisher for owner Tristanovsk,
+# repository surface_sky_radiance_ratio, workflow publish.yml, and environment pypi / testpypi.
+name: publish
+
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.12"
+      - name: Build sdist and wheel
+        run: |
+          python -m pip install --upgrade build twine
+          python -m build
+          twine check --strict dist/*
+      - name: Check that the tag matches the package version
+        if: github.ref_type == 'tag'
+        run: |
+          version=$(python -c "import surface_sky_radiance_ratio as p; print(p.__version__)")
+          if [ "v$version" != "$GITHUB_REF_NAME" ]; then
+            echo "Tag $GITHUB_REF_NAME does not match package version $version"; exit 1
+          fi
+      - uses: actions/upload-artifact@v7
+        with:
+          name: dist
+          path: dist/
+
+  publish-testpypi:
+    if: github.event_name == 'workflow_dispatch'
+    needs: build
+    runs-on: ubuntu-latest
+    environment: testpypi
+    permissions:
+      id-token: write
+    steps:
+      - uses: actions/download-artifact@v8
+        with:
+          name: dist
+          path: dist/
+      - uses: pypa/gh-action-pypi-publish@release/v1
+        with:
+          repository-url: https://test.pypi.org/legacy/
+
+  publish-pypi:
+    if: github.ref_type == 'tag'
+    needs: build
+    runs-on: ubuntu-latest
+    environment: pypi
+    permissions:
+      id-token: write
+    steps:
+      - uses: actions/download-artifact@v8
+        with:
+          name: dist
+          path: dist/
+      - uses: pypa/gh-action-pypi-publish@release/v1
+
+  github-release:
+    if: github.ref_type == 'tag'
+    needs: publish-pypi
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/download-artifact@v8
+        with:
+          name: dist
+          path: dist/
+      - name: Create the GitHub release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          version="${GITHUB_REF_NAME#v}"
+          notes="$RUNNER_TEMP/notes.md"
+          # section "## [X.Y.Z] - date" of CHANGELOG.md, up to the next version
+          awk -v v="$version" '
+            index($0, "## [" v "]") == 1 {on = 1; next}
+            on && (/^## / || /^\[[^]]+\]: /) {exit}
+            on {print}' CHANGELOG.md > "$notes"
+          if [ -s "$notes" ]; then
+            printf '\n```\npip install --upgrade surface_sky_radiance_ratio==%s\n```\n' "$version" >> "$notes"
+            notes_option=(--notes-file "$notes")
+          else
+            notes_option=(--generate-notes)
+          fi
+          gh release create "$GITHUB_REF_NAME" dist/* --verify-tag \
+            --title "surface_sky_radiance_ratio ${GITHUB_REF_NAME}" "${notes_option[@]}"

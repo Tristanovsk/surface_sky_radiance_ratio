@@ -1,0 +1,22 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200" width="200" height="200">
+  <style>.ink{fill:#222222}@media (prefers-color-scheme: dark){.ink{fill:#f2f2f2}}</style>
+  <defs>
+    <linearGradient id="sky" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#1b4f8a"/>
+      <stop offset="1" stop-color="#8fd3f4"/>
+    </linearGradient>
+    <linearGradient id="water" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0" stop-color="#1b4f8a"/>
+      <stop offset="0.5" stop-color="#1fa3b8"/>
+      <stop offset="1" stop-color="#5cc9b5"/>
+    </linearGradient>
+    <clipPath id="dome"><path d="M 10 140 A 90 90 0 0 1 190 140 Z"/></clipPath>
+  </defs>
+  <path d="M 10 140 A 90 90 0 0 1 190 140 Z" fill="url(#sky)"/>
+  <circle cx="40" cy="112" r="13" fill="#F4B942" clip-path="url(#dome)"/>
+  <path d="M 6 146 q 16 -9 32 0 t 32 0 t 32 0 t 32 0 t 32 0 t 32 0" fill="none" stroke="url(#water)" stroke-width="7" stroke-linecap="round"/>
+  <path d="M 6 166 q 16 -9 32 0 t 32 0 t 32 0 t 32 0 t 32 0 t 32 0" fill="none" stroke="url(#water)" stroke-width="5" stroke-linecap="round" opacity="0.6"/>
+  <path d="M 100 140 L 156 64" fill="none" stroke="#ffffff" stroke-width="5"/>
+  <path d="M 44 64 L 100 140" fill="none" stroke="#ffffff" stroke-width="5" stroke-dasharray="10 7"/>
+  <rect x="146" y="44" width="26" height="14" rx="3" transform="rotate(36 159 51)" class="ink"/>
+</svg>

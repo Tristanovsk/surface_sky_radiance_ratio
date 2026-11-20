@@ -1,0 +1,8 @@
+# Source distribution: the package and its sliced look-up table, README, CHANGELOG, CITATION, LICENSE and
+# pyproject.toml only (no notebooks, docs, illustrations or complete look-up table).
+prune notebook
+prune docs
+prune illustration
+prune data
+global-exclude __pycache__ *.py[cod]
+include CHANGELOG.md CITATION.cff

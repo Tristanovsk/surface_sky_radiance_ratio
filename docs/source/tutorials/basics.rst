@@ -12,3 +12,4 @@ build time and rendered with their saved outputs (they are not executed).
 
    basic_visualization
    optimal_geometries
+   swir_extension

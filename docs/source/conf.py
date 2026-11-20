@@ -7,7 +7,6 @@ import json
 import os
 import shutil
 import sys
-import tomllib
 from pathlib import Path
 
 # Make the package importable without installation (local builds);
@@ -16,23 +15,23 @@ DOCS_SOURCE = Path(__file__).resolve().parent
 REPO_ROOT = DOCS_SOURCE.parents[1]
 sys.path.insert(0, str(REPO_ROOT))
 
-on_rtd = os.environ.get('READTHEDOCS') == 'True'
+import surface_sky_radiance_ratio  # noqa: E402
 
-with open(REPO_ROOT / 'pyproject.toml', 'rb') as f:
-    _pyproject = tomllib.load(f)['project']
+on_rtd = os.environ.get('READTHEDOCS') == 'True'
 
 # Tutorials are the notebooks of the repository's notebook/ folder, copied
 # here at each build so that the docs never diverge from them. A title cell is
 # prepended to the copy when the notebook does not start with one.
 TUTORIALS = {
     'basic_visualization.ipynb': None,
-    'optimal_geometries.ipynb': 'Optimal viewing geometries',
+    'optimal_geometries.ipynb': None,
+    'swir_extension.ipynb': None,
 }
 for _nb, _title in TUTORIALS.items():
     with open(REPO_ROOT / 'notebook' / _nb) as f:
         _content = json.load(f)
     if _title is not None:
-        _content['cells'].insert(0, {'cell_type': 'markdown', 'metadata': {},
+        _content['cells'].insert(0, {'cell_type': 'markdown', 'id': 'doc-title', 'metadata': {},
                                      'source': [f'# {_title}']})
     with open(DOCS_SOURCE / 'tutorials' / _nb, 'w') as f:
         json.dump(_content, f)
@@ -41,10 +40,10 @@ for _nb, _title in TUTORIALS.items():
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#project-information
 
 project = 'surface_sky_radiance_ratio'
-copyright = '2023, Tristan Harmel'
+copyright = '2023-2026, Tristan Harmel'
 author = 'Tristan Harmel'
-release = _pyproject['version']
-version = '.'.join(release.split('.')[:2])
+version = surface_sky_radiance_ratio.__version__
+release = surface_sky_radiance_ratio.__version__
 today_fmt = '%Y-%m-%d'
 
 # -- General configuration ---------------------------------------------------
@@ -76,18 +75,18 @@ suppress_warnings = ['myst.header']
 
 autosummary_generate = True
 autoclass_content = 'class'
-autodoc_typehints = 'description'
-# 'members' is set in the autosummary templates (_templates/) to avoid
-# documenting objects twice
-autodoc_default_options = {
-    'member-order': 'bysource',
-    'show-inheritance': True,
-}
+autodoc_typehints = 'none'          # types are given in the docstrings
+autodoc_member_order = 'bysource'
+# 'members' is set in the autosummary templates (_templates/autosummary/) to
+# avoid documenting objects twice
+add_module_names = False
 
 # NumPy-style docstrings
 napoleon_google_docstring = False
 napoleon_numpy_docstring = True
 napoleon_use_rtype = False
+napoleon_use_ivar = True
+napoleon_preprocess_types = True
 
 todo_include_todos = True
 
@@ -116,7 +115,8 @@ latex_elements = {
 intersphinx_mapping = {
     'python': ('https://docs.python.org/3', None),
     'numpy': ('https://numpy.org/doc/stable', None),
-    'pandas': ('https://pandas.pydata.org/docs', None),
+    'scipy': ('https://docs.scipy.org/doc/scipy', None),
+    'pooch': ('https://www.fatiando.org/pooch/latest', None),
     'xarray': ('https://docs.xarray.dev/en/stable', None),
     'matplotlib': ('https://matplotlib.org/stable', None),
 }
@@ -137,11 +137,22 @@ html_theme_options = {
     'navigation_with_keys': True,
     'show_toc_level': 2,
     'secondary_sidebar_items': ['page-toc', 'edit-this-page'],
+    # transparent logos switched with the light/dark theme
+    'logo': {
+        'image_light': '_static/logo_light.svg',
+        'image_dark': '_static/logo_dark.svg',
+        'alt_text': 'surface_sky_radiance_ratio - Home',
+    },
 }
 
-html_title = 'surface_sky_radiance_ratio'
+html_title = ''
+html_logo = '_static/logo_light.svg'
+# the favicon follows the light / dark theme of the browser
+html_favicon = '_static/favicon.svg'
 
 html_static_path = ['_static']
+html_css_files = ['custom.css']
+html_js_files = ['theme_pictures.js']
 html_show_sourcelink = False
 html_last_updated_fmt = today_fmt
 
@@ -166,6 +177,7 @@ myst_enable_extensions = [
 # not available on Read the Docs: they are rendered with their saved outputs.
 nb_execution_mode = 'off'
 nb_merge_streams = True
+suppress_warnings += ['mystnb.unknown_mime_type']
 
 
 # -- README illustrations ----------------------------------------------------
@@ -175,7 +187,8 @@ nb_merge_streams = True
 def _copy_illustrations(app, exception):
     if exception is None and app.builder.format == 'html':
         shutil.copytree(REPO_ROOT / 'illustration',
-                        Path(app.outdir) / 'illustration', dirs_exist_ok=True)
+                        Path(app.outdir) / 'illustration', dirs_exist_ok=True,
+                        ignore=shutil.ignore_patterns('*.py'))
 
 
 def setup(app):

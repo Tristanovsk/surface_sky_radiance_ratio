@@ -1,0 +1,30 @@
+cff-version: 1.2.0
+message: "If you use these look-up tables, please cite the article below."
+title: "surface_sky_radiance_ratio: look-up tables of the surface-to-sky radiance ratio for above-water radiometry"
+type: software
+authors:
+  - family-names: Harmel
+    given-names: Tristan
+version: 1.1.0
+date-released: 2026-11-20
+license: Apache-2.0
+repository-code: "https://github.com/Tristanovsk/surface_sky_radiance_ratio"
+url: "https://surface-sky-radiance-ratio.readthedocs.io"
+keywords:
+  - above-water radiometry
+  - surface-to-sky radiance ratio
+  - sky glint
+  - polarization
+  - aerosol
+  - OSOAA
+preferred-citation:
+  type: article
+  authors:
+    - family-names: Harmel
+      given-names: Tristan
+  title: "Apparent surface-to-sky radiance ratio of natural waters including polarization and aerosol effects: implications for above-water radiometry"
+  journal: "Frontiers in Remote Sensing"
+  volume: 4
+  start: 1307976
+  year: 2023
+  doi: 10.3389/frsen.2023.1307976

@@ -1,0 +1,15 @@
+{
+  "title": "surface_sky_radiance_ratio: look-up tables of the surface-to-sky radiance ratio for above-water radiometry",
+  "upload_type": "software",
+  "description": "<p>Python package to load and plot the look-up tables of the surface-to-sky radiance ratio, R<sub>ss</sub>, used to correct the skylight reflected by the water surface in above-water radiometry. The values were computed with the vector radiative transfer code OSOAA for the OPAC aerosol models and a Cox-Munk rough surface (Harmel, 2023).</p>",
+  "creators": [
+    {"name": "Harmel, Tristan"}
+  ],
+  "license": "Apache-2.0",
+  "keywords": ["above-water radiometry", "surface-to-sky radiance ratio", "sky glint", "polarization", "aerosol", "OSOAA", "ocean color"],
+  "related_identifiers": [
+    {"identifier": "10.3389/frsen.2023.1307976", "relation": "isSupplementTo", "scheme": "doi", "resource_type": "publication-article"},
+    {"identifier": "https://surface-sky-radiance-ratio.readthedocs.io", "relation": "isDocumentedBy", "scheme": "url"}
+  ],
+  "notes": "Funding: French National Program for Remote Sensing (PNTS-2019-13)."
+}
