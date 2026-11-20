@@ -52,7 +52,7 @@ $R_{ss}$ was computed with the vector radiative transfer code OSOAA, including p
 |---|---|---|---|
 | `wind` | Equivalent Cox-Munk wind speed | 0.5, 2, 4, 8, 12, 16 | m s<sup>-1</sup> |
 | `model` | OPAC aerosol model (70% relative humidity) | `COAV_rh70` (continental average), `DESE_rh70` (desert), `MACL_rh70` (maritime clean), `URBA_rh70` (urban) | - |
-| `aot_ref` | Aerosol optical thickness at 550 nm | 0 to 1.5 | - |
+| `aot_ref` | Aerosol optical thickness at 550 nm | 0, 0.001 (since v1.1), 0.01, 0.1, 0.2, 0.35, 0.5, 0.7, 1, 1.5 | - |
 | `wl` | Wavelength $\lambda$ | 350, 400, 500, 600, 700, 800, 1000; since v1.1 also 1600, 2200, 2500 (atmospheric windows only, see the docs) | nm |
 | `sza` | Solar zenith angle $\theta_s$ | 0 to 88, step 2 | degrees |
 | `vza` | Viewing zenith angle $\theta_v$ | full table: 0 to 90; sliced table: 30, 40, 50 | degrees |

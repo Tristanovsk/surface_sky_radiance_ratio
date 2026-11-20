@@ -64,7 +64,7 @@ from pathlib import Path
 import numpy as np
 import xarray as xr
 
-__all__ = ['lut', 'lut_file', 'SLICED_LUT', 'FULL_LUT', 'FULL_LUT_V1', 'FULL_LUT_URL']
+__all__ = ['lut', 'lut_file', 'download', 'SLICED_LUT', 'FULL_LUT', 'FULL_LUT_V1', 'FULL_LUT_URL']
 
 #: Folder of the look-up table shipped with the package.
 PACKAGE_DATA_DIR = Path(__file__).resolve().parent / 'data'
@@ -75,10 +75,13 @@ REPO_DATA_DIR = Path(__file__).resolve().parents[1] / 'data'
 SLICED_LUT = 'surf_sky_radiance_ratio_osoaa_opac_sliced_v1.1.nc'
 #: Complete look-up table (350-2500 nm), downloaded separately.
 FULL_LUT = 'surf_sky_radiance_ratio_osoaa_opac_v1.1.nc'
-#: Download URL of the complete look-up table (Zenodo record, None until it is published).
-FULL_LUT_URL = None
+#: Zenodo record of the look-up tables (None until it is published), e.g. '1234567'.
+ZENODO_RECORD = None
+#: Download URL of the complete look-up table (from the Zenodo record).
+FULL_LUT_URL = (f'https://zenodo.org/records/{ZENODO_RECORD}/files/{FULL_LUT}?download=1'
+                if ZENODO_RECORD else None)
 #: SHA-256 checksum of the complete look-up table, checked after download.
-FULL_LUT_SHA256 = 'f6fe457ef1430c7dcf8337201ad9ca9b9577b94bc51eaa537f7d9fa8266c1317'
+FULL_LUT_SHA256 = 'd473c826c5cfc487f2f7f17a7ae22b40c98218b5f07bf6a3018597dca14a5d29'
 #: Complete look-up table of version 1.0 (350-1000 nm, Harmel 2023), used if v1.1 is not found.
 FULL_LUT_V1 = 'surf_sky_radiance_ratio_osoaa_opac_v1.nc'
 #: Location of the complete look-up table of version 1.0.
@@ -168,6 +171,20 @@ def lut_file(lutfile=None, download=True):
     raise FileNotFoundError(
         f'{FULL_LUT} not found (searched: {searched}). {hint} '
         f'and place it in one of these folders, or set {DATA_DIR_ENV} to its folder.')
+
+
+def download():
+    """
+    Download the complete look-up table into the cache shared by all the packages of the machine.
+
+    Does nothing if the table is already found locally (see :func:`lut_file`).
+
+    Returns
+    -------
+    pathlib.Path
+        Path of the complete look-up table.
+    """
+    return lut_file('full', download=True)
 
 
 class lut():

@@ -15,6 +15,8 @@ install needed), tests and continuous integration, documentation in the style of
 
 - Look-up tables v1.1: wavelengths 1600, 2200 and 2500 nm added to 350-1000 nm, from the same OSOAA
   computations (`boa_lut_opac_wind_updown_v2.nc`) and recipe as v1.0, whose values are kept unchanged.
+- Look-up tables v1.1: aerosol optical thickness 0.001 added for all the wavelengths (simulated for
+  Harmel, 2023, and listed in its Table 4, but not kept in v1.0).
   Computed without gaseous absorption: atmospheric windows only. Global attributes (title, references,
   license, conventions), compressed float32 netCDF. Built by `tools/make_lut_v1_1.py`.
 - `lut()` uses the sliced table v1.1 (installed with the package); `lut('full')` uses the complete table v1.1,

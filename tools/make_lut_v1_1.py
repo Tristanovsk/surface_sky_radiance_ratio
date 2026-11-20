@@ -5,7 +5,8 @@ v1.1 = v1 (350, 400, 500, 600, 700, 800, 1000 nm, values unchanged) + 1600, 2200
 with the same recipe as v1, i.e. the ratio of the upward radiance just above the surface (vza < 90)
 to the downward sky radiance of the specular direction (180 - vza), from the OSOAA runs of
 boa_lut_opac_wind_updown_v2.nc (water body totally absorbing, sunglint not included in the radiance
-field, see Harmel, 2023). As in v1, the aerosol optical thickness 0.001 is not kept.
+field, see Harmel, 2023). The aerosol optical thickness 0.001, simulated but not kept in v1, is added
+for all the wavelengths with the same recipe.
 
 Recomputing the v1 wavelengths with this recipe gives the v1 values to a relative difference
 < 6e-5 (float32 rounding of the intermediate computations): the v1 values are kept as published.
@@ -43,20 +44,25 @@ GLOBAL_ATTRS = {
                   'polarization and aerosol effects: implications for above-water radiometry. Frontiers in '
                   'Remote Sensing, 4, 1307976. https://doi.org/10.3389/frsen.2023.1307976',
     'source': 'OSOAA vector radiative transfer computations (successive orders of scattering)',
+    'keywords': 'above-water radiometry, surface-to-sky radiance ratio, sea surface reflectance factor, sky glint, '
+                'polarization, aerosol, OSOAA, OPAC, ocean color, remote sensing reflectance',
+    'doi_article': '10.3389/frsen.2023.1307976',
+    'funding': 'French National Program for Remote Sensing (PNTS-2019-13)',
     'license': 'CC-BY-4.0',
-    'Conventions': 'CF-1.8',
-    'comment': 'Wavelengths 350-1000 nm are the values of version 1.0. Wavelengths 1600, 2200 and 2500 nm '
-               '(added in version 1.1) were computed without gaseous absorption: use them in atmospheric '
+    'license_url': 'https://creativecommons.org/licenses/by/4.0/',
+    'Conventions': 'CF-1.8, ACDD-1.3',
+    'comment': 'Wavelengths 350-1000 nm are the values of version 1.0; version 1.1 adds the wavelengths '
+               '1600, 2200 and 2500 nm and the aerosol optical thickness 0.001, from the same OSOAA '
+               'computations. The SWIR wavelengths were computed without gaseous absorption: use them in atmospheric '
                'windows only; 2500 nm is at the edge of strong water vapour and methane absorption.',
     'software': 'https://github.com/Tristanovsk/surface_sky_radiance_ratio',
 }
 
 
-def swir_rss(updown_file):
-    """Rss at SWIR_WL from the up/down radiance LUT (same recipe as v1)."""
+def updown_rss(updown_file):
+    """Rss from the up/down radiance LUT, all wavelengths and AOTs (same recipe as v1)."""
     xlut = xr.open_dataset(updown_file, chunks={'model': 1, 'wind': 1, 'aot_ref': 1})
     xlut['wl'] = xlut['wl'] * 1000
-    xlut = xlut.sel(wl=SWIR_WL).drop_isel(aot_ref=1)        # drop aot_ref = 0.001, as in v1
     Id = xlut.I.sel(vza=slice(90.001, 180.001))
     Iu = xlut.I.sel(vza=slice(0, 90))
     Id['vza'] = 180 - Id['vza']
@@ -80,15 +86,24 @@ def main():
     outdir = Path(args.outdir)
 
     v1 = xr.open_dataset(args.v1, chunks={'model': 1, 'wind': 1, 'aot_ref': 1})
-    swir = swir_rss(args.updown)
-    # same coordinates as v1 (float rounding of the angles and AOT of the up/down LUT)
-    for dim in ('aot_ref', 'sza', 'vza', 'azi', 'wind'):
-        np.testing.assert_allclose(swir[dim].values, v1[dim].values, atol=1e-3, err_msg=dim)
-    assert list(swir.model.values) == list(v1.model.values)
-    swir = swir.assign_coords({d: v1[d] for d in ('aot_ref', 'sza', 'vza', 'azi', 'wind')})
-    swir = swir.transpose(*v1.Rss.dims)
+    new = updown_rss(args.updown).transpose(*v1.Rss.dims)
+    assert list(new.model.values) == list(v1.model.values)
+    angles = ('sza', 'vza', 'azi', 'wind')
+    for dim in angles:       # same grids as v1 (float rounding of the up/down LUT)
+        np.testing.assert_allclose(new[dim].values, v1[dim].values, atol=1e-3, err_msg=dim)
+    new = new.assign_coords({d: v1[d] for d in angles})
+    i_low = int(np.argmin(np.abs(new.aot_ref.values - 0.001)))
+    assert abs(float(new.aot_ref[i_low]) - 0.001) < 1e-6
 
+    # SWIR wavelengths for the AOTs of v1
+    swir = new.sel(wl=SWIR_WL).drop_isel(aot_ref=i_low)
+    np.testing.assert_allclose(swir.aot_ref.values, v1.aot_ref.values, atol=1e-6)
+    swir = swir.assign_coords(aot_ref=v1.aot_ref)
     Rss = xr.concat([v1.Rss, swir], dim='wl', coords='minimal', compat='override')
+
+    # AOT 0.001 for all the wavelengths
+    low = new.isel(aot_ref=[i_low]).sel(wl=Rss.wl.values, method='nearest').assign_coords(wl=Rss.wl)
+    Rss = xr.concat([Rss, low], dim='aot_ref', coords='minimal', compat='override').sortby('aot_ref')
     Rss.attrs = dict(v1.Rss.attrs, version=VERSION)
     Rss.attrs['reference'] = GLOBAL_ATTRS['references']
     ds = Rss.to_dataset(name='Rss')
@@ -96,7 +111,15 @@ def main():
         if coord in v1.coords:
             ds[coord].attrs = v1[coord].attrs
     ds['wl'].attrs = v1['wl'].attrs
-    ds.attrs = dict(GLOBAL_ATTRS, date_created=datetime.date.today().isoformat())
+    ds['aot_ref'].attrs['description'] = 'aerosol optical thickness (scattering + absorption) at 550 nm'
+    ds['azi'].attrs['description'] = 'relative azimuth, equal to 0 degrees when the Sun and the sensor are in opposition'
+    ds['vza'].attrs['description'] = 'viewing zenith angle of the sensor (upward radiance)'
+    ds['model'].attrs['description'] = ('aerosol models of the Optical Properties of Aerosols and Clouds (OPAC) '
+                                        'data set at 70% relative humidity: COAV continental average, DESE desert, '
+                                        'MACL maritime clean, URBA urban')
+    ds.attrs = dict(GLOBAL_ATTRS, date_created=datetime.date.today().isoformat(),
+                    history=f'{datetime.date.today().isoformat()}: built by tools/make_lut_v1_1.py from '
+                            f'{Path(args.v1).name} and {Path(args.updown).name}')
 
     full = outdir / f'surf_sky_radiance_ratio_osoaa_opac_v{VERSION}.nc'
     print(f'writing {full}')

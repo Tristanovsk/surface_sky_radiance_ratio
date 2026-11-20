@@ -33,6 +33,10 @@ dependencies = [
     "matplotlib>=3.5",     # lut.plot_vs_sza, lut.plot_vs_vza
 ]
 
+[project.scripts]
+# path / download / info of the look-up tables
+surface-sky-radiance-ratio = "surface_sky_radiance_ratio.__main__:main"
+
 [project.optional-dependencies]
 # download of the complete look-up table (1.2 GB) into the local cache
 download = ["pooch>=1.6"]

@@ -38,6 +38,7 @@ def test_structure(rss):
     assert list(ds.vza.values) == [30, 40, 50]
     assert set(ds.model.values) == {'COAV_rh70', 'DESE_rh70', 'MACL_rh70', 'URBA_rh70'}
     assert list(ds.wl.values) == [350, 400, 500, 600, 700, 800, 1000, 1600, 2200, 2500]
+    np.testing.assert_allclose(ds.aot_ref.values, [0, 0.001, 0.01, 0.1, 0.2, 0.35, 0.5, 0.7, 1, 1.5], rtol=1e-6)
     assert 'slope_variance' in ds.coords
 
 
@@ -92,3 +93,9 @@ def test_full_table_falls_back_to_v1(tmp_path, monkeypatch):
     monkeypatch.setattr(main, '_cache_dir', lambda: None)
     with pytest.warns(UserWarning, match='version 1.0'):
         assert lut_file('full') == tmp_path / main.FULL_LUT_V1
+
+
+def test_command_line(capsys):
+    from surface_sky_radiance_ratio.__main__ import main as cli
+    assert cli(['path']) == 0
+    assert capsys.readouterr().out.strip() == str(lut_file())
